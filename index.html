@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Pop My Heart 🏹💖</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    body {
+      background: #0d0a1a;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #game-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      max-width: 500px;
+      max-height: 850px;
+      background: linear-gradient(to bottom, #0a0814, #1a1532, #382042);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    #ui {
+      position: absolute;
+      top: 18px;
+      left: 0;
+      width: 100%;
+      padding: 0 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #ffe3ec;
+      font-weight: 600;
+      font-size: 1rem;
+      text-shadow: 0 2px 5px rgba(0,0,0,0.6);
+      z-index: 10;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    #ui.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .exit-btn {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #ffe3ec;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+      transition: background 0.2s ease, transform 0.1s ease;
+    }
+    .exit-btn:active {
+      transform: scale(0.95);
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Full-screen Overlays (Start Page & Polaroid) */
+    .screen-overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(10, 8, 20, 0.75);
+      backdrop-filter: blur(8px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 20;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+    .screen-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Start Card */
+    .start-card {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 32px 24px;
+      border-radius: 20px;
+      text-align: center;
+      max-width: 85%;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      transform: scale(0.9);
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .screen-overlay.active .start-card {
+      transform: scale(1);
+    }
+    .start-card h1 {
+      color: #ff4081;
+      font-size: 1.8rem;
+      margin-bottom: 12px;
+    }
+    .start-card p {
+      color: #4a4a4a;
+      font-size: 0.98rem;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+
+    /* Polaroid Card Modal */
+    .polaroid {
+      background: #ffffff;
+      padding: 14px 14px 22px 14px;
+      border-radius: 6px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+      width: 280px;
+      text-align: center;
+      transform: rotate(-3deg) scale(0.7);
+      transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .screen-overlay.active .polaroid {
+      transform: rotate(2deg) scale(1);
+    }
+    .polaroid-img-container {
+      width: 100%;
+      height: 220px;
+      background: #f0f0f0;
+      border-radius: 3px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.15);
+    }
+    .polaroid-img-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .polaroid-caption {
+      margin-top: 14px;
+      font-family: 'Segoe UI', cursive, sans-serif;
+      color: #333;
+      font-size: 0.98rem;
+      line-height: 1.4;
+      font-weight: 600;
+      padding: 0 6px;
+    }
+
+    .btn {
+      background: linear-gradient(45deg, #ff4081, #ff80ab);
+      color: white;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 25px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(255, 64, 129, 0.4);
+      transition: transform 0.1s ease;
+    }
+    .btn:active {
+      transform: scale(0.96);
+    }
+  </style>
+</head>
+<body>
+
+  <div id="game-container">
+    <!-- Top UI Bar during gameplay -->
+    <div id="ui">
+      <div>Memories Found: <span id="score">0</span></div>
+      <button class="exit-btn" onclick="exitGame()">🏠 Home</button>
+    </div>
+
+    <!-- Start Page / Home Screen Overlay -->
+    <div id="startScreen" class="screen-overlay active">
+      <div class="start-card">
+        <h1>Pop My Heart 🏹💖</h1>
+        <p>Aim, shoot, and see our sweetest moments!</p>
+        <button class="btn" onclick="startGame()">Start Game 💕</button>
+      </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Polaroid Memory Pop-up Modal -->
+    <div id="polaroidModal" class="screen-overlay">
+      <div class="polaroid">
+        <div class="polaroid-img-container">
+          <img id="polaroidImage" src="" alt="Our Memory" />
+        </div>
+        <div class="polaroid-caption" id="polaroidText">"You are my favorite thought."</div>
+      </div>
+      <button class="btn" style="margin-top: 20px;" onclick="closePolaroid()">Pop Another Balloon 💕</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const uiEl = document.getElementById('ui');
+    const scoreEl = document.getElementById('score');
+    const startScreen = document.getElementById('startScreen');
+    const polaroidModal = document.getElementById('polaroidModal');
+    const polaroidImage = document.getElementById('polaroidImage');
+    const polaroidText = document.getElementById('polaroidText');
+
+    // Game States: 'HOME' | 'PLAYING' | 'POLAROID'
+    let gameState = 'HOME';
+
+    let width, height;
+    let score = 0;
+
+    // Photos will be populated dynamically from the images folder.
+    let photos = [];
+
+    async function loadPhotos() {
+      const fallbackPhotos = Array.from({ length: 10 }, (_, i) => `images/photo-${i + 1}.jpeg`);
+
+      try {
+        const response = await fetch('images/');
+        if (!response.ok) throw new Error('Could not load images directory.');
+
+        const html = await response.text();
+        const discoveredPhotos = [...html.matchAll(/href="([^"]+\.(?:jpe?g|png|gif|webp|bmp|svg))"/gi)]
+          .map((match) => match[1])
+          .filter((fileName) => !fileName.startsWith('._') && !fileName.startsWith('/'))
+          .map((fileName) => `images/${fileName.replace(/^\.\//, '')}`);
+
+        photos = [...new Set(discoveredPhotos)];
+      } catch (error) {
+        photos = fallbackPhotos;
+      }
+
+      if (!photos.length) {
+        photos = fallbackPhotos;
+      }
+
+      return photos;
+    }
+
+    // Romantic Quotes Pool
+    const loveQuotes = [
+      "You make every single day feel like a beautiful adventure.",
+      "Forever my favorite person to share morning coffee with.",
+      "Choosing you every day is the easiest decision I ever make.",
+      "You are my best friend, my home, and my favorite person.",
+      "I love you to the moon and back a million times.",
+      "You make my heart smile in ways no one else can.",
+      "My favorite place in the entire world is right next to you.",
+      "Life with you is better than any dream I've ever had.",
+      "Thank you for making my life so sweet, fun, and full of love.",
+      "You are my favorite notification and my favorite thought.",
+      "Every little moment with you turns into a memory I want to keep forever.",
+      "You are the calm in my chaos and the spark in my every day.",
+      "I still get butterflies every time I see your smile.",
+      "The best part of my life is simply loving you.",
+      "You make ordinary days feel like the most magical ones.",
+      "I never knew love could feel this soft, safe, and sincere.",
+      "My heart always finds its way back to you.",
+      "You are my most treasured blessing and my favorite person.",
+      "Being with you feels like the sweetest kind of home.",
+      "You deserve all the love in the world, and I want to give it to you.",
+      "Every day with you is a chapter I want to reread forever.",
+      "You are the reason my world feels brighter, warmer, and fuller.",
+      "I love the way your presence makes everything else fade away.",
+      "You are my favorite hello and my hardest goodbye.",
+      "My heart is happiest when it's wrapped up in your love."
+    ];
+
+    let availablePhotoIndices = [];
+
+    // Slingshot / Bow Origin Point
+    const slingshot = { x: 0, y: 0, maxPull: 110 };
+    let isDragging = false;
+    let dragPos = { x: 0, y: 0 };
+
+    // Game Entities
+    let arrows = [];
+    let balloons = [];
+    let confetti = [];
+    let stars = [];
+
+    function resize() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      width = canvas.width = rect.width;
+      height = canvas.height = rect.height;
+      slingshot.x = width / 2;
+      slingshot.y = height - 90;
+      initStars();
+    }
+
+    function initStars() {
+      stars = [];
+      for (let i = 0; i < 50; i++) {
+        stars.push({
+          x: Math.random() * width,
+          y: Math.random() * (height * 0.7),
+          size: Math.random() * 2 + 1,
+          alpha: Math.random()
+        });
+      }
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Game State Flow Controls
+    async function startGame() {
+      await loadPhotos();
+      score = 0;
+      scoreEl.textContent = score;
+      arrows = [];
+      balloons = [];
+      confetti = [];
+      availablePhotoIndices = [...Array(photos.length).keys()];
+
+      startScreen.classList.remove('active');
+      uiEl.classList.add('active');
+      gameState = 'PLAYING';
+    }
+
+    function exitGame() {
+      gameState = 'HOME';
+      uiEl.classList.remove('active');
+      polaroidModal.classList.remove('active');
+      startScreen.classList.add('active');
+      
+      // Clear game elements
+      arrows = [];
+      balloons = [];
+      confetti = [];
+    }
+
+    function createBalloon() {
+      return {
+        x: Math.random() * (width - 100) + 50,
+        y: -50,
+        radius: 28,
+        speedY: Math.random() * 0.8 + 0.6,
+        swaySpeed: Math.random() * 0.03 + 0.01,
+        swayOffset: Math.random() * Math.PI * 2,
+        color: `hsl(${Math.random() * 40 + 320}, 90%, 75%)`
+      };
+    }
+
+    // Touch / Mouse Controls
+    function getPointerPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
+
+    function onStart(e) {
+      if (gameState !== 'PLAYING') return;
+      const pos = getPointerPos(e);
+      const dist = Math.hypot(pos.x - slingshot.x, pos.y - slingshot.y);
+      if (dist < 100) {
+        isDragging = true;
+        dragPos = pos;
+      }
+    }
+
+    function onMove(e) {
+      if (!isDragging || gameState !== 'PLAYING') return;
+      const pos = getPointerPos(e);
+      const dx = pos.x - slingshot.x;
+      const dy = pos.y - slingshot.y;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist > slingshot.maxPull) {
+        const angle = Math.atan2(dy, dx);
+        dragPos = {
+          x: slingshot.x + Math.cos(angle) * slingshot.maxPull,
+          y: slingshot.y + Math.sin(angle) * slingshot.maxPull
+        };
+      } else {
+        dragPos = pos;
+      }
+    }
+
+    function onEnd() {
+      if (!isDragging || gameState !== 'PLAYING') return;
+      isDragging = false;
+
+      const dx = slingshot.x - dragPos.x;
+      const dy = slingshot.y - dragPos.y;
+      const power = 0.18;
+
+      arrows.push({
+        x: slingshot.x,
+        y: slingshot.y,
+        vx: dx * power,
+        vy: dy * power,
+        angle: Math.atan2(dy, dx),
+        life: 0
+      });
+    }
+
+    window.addEventListener('mousedown', onStart);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
+
+    window.addEventListener('touchstart', onStart);
+    window.addEventListener('touchmove', onMove);
+    window.addEventListener('touchend', onEnd);
+
+    function explodeBalloon(x, y, color) {
+      for (let i = 0; i < 25; i++) {
+        confetti.push({
+          x, y,
+          vx: (Math.random() - 0.5) * 8,
+          vy: (Math.random() - 0.5) * 8 - 2,
+          size: Math.random() * 6 + 4,
+          color: i % 2 === 0 ? color : '#ffffff',
+          alpha: 1
+        });
+      }
+    }
+
+    function triggerPolaroid() {
+      gameState = 'POLAROID';
+      score++;
+      scoreEl.textContent = score;
+
+      if (availablePhotoIndices.length === 0) {
+        availablePhotoIndices = [...Array(photos.length).keys()];
+      }
+
+      const randomIndexPosition = Math.floor(Math.random() * availablePhotoIndices.length);
+      const photoIndex = availablePhotoIndices.splice(randomIndexPosition, 1)[0];
+      const randomQuote = loveQuotes[Math.floor(Math.random() * loveQuotes.length)];
+
+      polaroidImage.src = photos[photoIndex];
+      polaroidText.textContent = `"${randomQuote}"`;
+
+      setTimeout(() => {
+        polaroidModal.classList.add('active');
+      }, 300);
+    }
+
+    function closePolaroid() {
+      polaroidModal.classList.remove('active');
+      gameState = 'PLAYING';
+    }
+
+    function update() {
+      // Only update balloons and collision logic during active play
+      if (gameState === 'PLAYING') {
+        if (Math.random() < 0.02 && balloons.length < 4) {
+          balloons.push(createBalloon());
+        }
+
+        for (let i = balloons.length - 1; i >= 0; i--) {
+          const b = balloons[i];
+          b.y += b.speedY;
+          b.x += Math.sin(b.y * b.swaySpeed + b.swayOffset) * 1.2;
+          if (b.y > height + 60) balloons.splice(i, 1);
+        }
+
+        for (let i = arrows.length - 1; i >= 0; i--) {
+          const a = arrows[i];
+          a.x += a.vx;
+          a.y += a.vy;
+          a.vy += 0.08;
+          a.angle = Math.atan2(a.vy, a.vx);
+
+          for (let j = balloons.length - 1; j >= 0; j--) {
+            const b = balloons[j];
+            const dist = Math.hypot(a.x - b.x, a.y - b.y);
+
+            if (dist < b.radius + 15) {
+              explodeBalloon(b.x, b.y, b.color);
+              balloons.splice(j, 1);
+              arrows.splice(i, 1);
+              triggerPolaroid();
+              break;
+            }
+          }
+
+          if (a.x < -20 || a.x > width + 20 || a.y > height + 20) {
+            arrows.splice(i, 1);
+          }
+        }
+      }
+
+      // Confetti physics still update smoothly during transitions
+      for (let i = confetti.length - 1; i >= 0; i--) {
+        const c = confetti[i];
+        c.x += c.vx;
+        c.y += c.vy;
+        c.alpha -= 0.025;
+        if (c.alpha <= 0) confetti.splice(i, 1);
+      }
+    }
+
+    function drawTrajectory() {
+      if (!isDragging || gameState !== 'PLAYING') return;
+
+      const dx = slingshot.x - dragPos.x;
+      const dy = slingshot.y - dragPos.y;
+      const power = 0.18;
+
+      let simX = slingshot.x;
+      let simY = slingshot.y;
+      let simVx = dx * power;
+      let simVy = dy * power;
+
+      ctx.fillStyle = 'rgba(255, 182, 193, 0.7)';
+      for (let i = 0; i < 18; i++) {
+        simX += simVx;
+        simY += simVy;
+        simVy += 0.08;
+
+        ctx.beginPath();
+        ctx.arc(simX, simY, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawHeart(x, y, size, color) {
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      const topCurve = size * 0.3;
+      ctx.moveTo(x, y + topCurve);
+      ctx.bezierCurveTo(x, y, x - size/2, y, x - size/2, y + topCurve);
+      ctx.bezierCurveTo(x - size/2, y + (size + topCurve)/2, x, y + size, x, y + size);
+      ctx.bezierCurveTo(x, y + size, x + size/2, y + (size + topCurve)/2, x + size/2, y + topCurve);
+      ctx.bezierCurveTo(x + size/2, y, x, y, x, y + topCurve);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, width, height);
+
+      // Starry background
+      stars.forEach(s => {
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.3 + Math.sin(Date.now() * 0.003 + s.x) * 0.3})`;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Draw Balloons
+      balloons.forEach(b => {
+        ctx.shadowColor = b.color;
+        ctx.shadowBlur = 12;
+        drawHeart(b.x, b.y - 10, b.radius * 1.1, b.color);
+        ctx.shadowBlur = 0;
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y + b.radius);
+        ctx.lineTo(b.x + Math.sin(Date.now() * 0.005) * 5, b.y + b.radius + 25);
+        ctx.stroke();
+      });
+
+      // Draw Trajectory & Bow only while playing
+      if (gameState === 'PLAYING') {
+        drawTrajectory();
+
+        ctx.strokeStyle = '#ff80ab';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(slingshot.x - 30, slingshot.y);
+        ctx.lineTo(isDragging ? dragPos.x : slingshot.x, isDragging ? dragPos.y : slingshot.y);
+        ctx.lineTo(slingshot.x + 30, slingshot.y);
+        ctx.stroke();
+
+        ctx.fillStyle = '#ff4081';
+        ctx.beginPath();
+        ctx.arc(slingshot.x - 30, slingshot.y, 6, 0, Math.PI * 2);
+        ctx.arc(slingshot.x + 30, slingshot.y, 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Draw Flying Arrows
+      arrows.forEach(a => {
+        ctx.save();
+        ctx.translate(a.x, a.y);
+        ctx.rotate(a.angle);
+
+        ctx.strokeStyle = '#ffe3ec';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-20, 0);
+        ctx.lineTo(10, 0);
+        ctx.stroke();
+
+        ctx.shadowColor = '#ff4081';
+        ctx.shadowBlur = 10;
+        drawHeart(12, -8, 14, '#ff4081');
+
+        ctx.restore();
+      });
+
+      // Draw Confetti
+      confetti.forEach(c => {
+        ctx.save();
+        ctx.globalAlpha = c.alpha;
+        ctx.fillStyle = c.color;
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+    }
+
+    function gameLoop() {
+      update();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+
+    gameLoop();
+  </script>
+</body>
+</html>
