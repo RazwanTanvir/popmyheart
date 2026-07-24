@@ -72,8 +72,8 @@
 
     let availablePhotoIndices = [];
 
-    // Slingshot / Bow Origin Point
-    const slingshot = { x: 0, y: 0, maxPull: 110 };
+    // Launcher origin point
+    const slingshot = { x: 0, y: 0, maxPull: 140, radius: 28 };
     let isDragging = false;
     let dragPos = { x: 0, y: 0 };
 
@@ -312,6 +312,7 @@
       let simVx = dx * power;
       let simVy = dy * power;
 
+      ctx.save();
       ctx.fillStyle = 'rgba(255, 182, 193, 0.7)';
       for (let i = 0; i < 18; i++) {
         simX += simVx;
@@ -322,6 +323,87 @@
         ctx.arc(simX, simY, 3, 0, Math.PI * 2);
         ctx.fill();
       }
+      ctx.restore();
+    }
+
+    function drawPullHint() {
+      if (gameState !== 'PLAYING' || isDragging) return;
+
+      const guideX = slingshot.x - 24 + Math.sin(Date.now() * 0.004) * 12;
+      const guideY = slingshot.y - 70;
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 5]);
+      ctx.beginPath();
+      ctx.moveTo(slingshot.x, slingshot.y - 8);
+      ctx.lineTo(guideX, guideY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = `rgba(255, 240, 245, ${0.6 + Math.abs(Math.sin(Date.now() * 0.006)) * 0.25})`;
+      ctx.beginPath();
+      ctx.arc(guideX, guideY, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawRoundedRect(x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.arcTo(x + width, y, x + width, y + height, radius);
+      ctx.arcTo(x + width, y + height, x, y + height, radius);
+      ctx.arcTo(x, y + height, x, y, radius);
+      ctx.arcTo(x, y, x + width, y, radius);
+      ctx.closePath();
+    }
+
+    function drawLauncher() {
+      const pulse = 1 + Math.abs(Math.sin(Date.now() * 0.008)) * 0.7;
+      const coreX = slingshot.x;
+      const coreY = slingshot.y - 8;
+
+      ctx.save();
+
+      ctx.fillStyle = '#1f0828';
+      drawRoundedRect(coreX - 34, slingshot.y + 8, 68, 24, 12);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.lineWidth = 2;
+      drawRoundedRect(coreX - 34, slingshot.y + 8, 68, 24, 12);
+      ctx.stroke();
+
+      ctx.strokeStyle = `rgba(255, 126, 162, ${0.6 + pulse * 0.15})`;
+      ctx.lineWidth = 3 + pulse * 0.8;
+      ctx.beginPath();
+      ctx.arc(coreX, coreY, slingshot.radius + pulse * 2, 0, Math.PI * 2);
+      ctx.stroke();
+
+      const coreGradient = ctx.createRadialGradient(coreX, coreY - 4, 3, coreX, coreY - 4, slingshot.radius + 10);
+      coreGradient.addColorStop(0, '#ffe4ef');
+      coreGradient.addColorStop(0.35, '#ff8ab9');
+      coreGradient.addColorStop(1, '#ff4081');
+      ctx.fillStyle = coreGradient;
+      ctx.beginPath();
+      ctx.arc(coreX, coreY, slingshot.radius - 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffe3ec';
+      ctx.beginPath();
+      ctx.moveTo(coreX - 7, coreY + 2);
+      ctx.lineTo(coreX + 7, coreY + 2);
+      ctx.lineTo(coreX + 12, coreY + 16);
+      ctx.lineTo(coreX - 12, coreY + 16);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#ff80ab';
+      ctx.beginPath();
+      ctx.arc(coreX, coreY + 18, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
     }
 
     function drawHeart(x, y, size, color) {
@@ -364,23 +446,11 @@
         ctx.stroke();
       });
 
-      // Draw Trajectory & Bow only while playing
+      // Draw launcher and charge effect only while playing
       if (gameState === 'PLAYING') {
         drawTrajectory();
-
-        ctx.strokeStyle = '#ff80ab';
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(slingshot.x - 30, slingshot.y);
-        ctx.lineTo(isDragging ? dragPos.x : slingshot.x, isDragging ? dragPos.y : slingshot.y);
-        ctx.lineTo(slingshot.x + 30, slingshot.y);
-        ctx.stroke();
-
-        ctx.fillStyle = '#ff4081';
-        ctx.beginPath();
-        ctx.arc(slingshot.x - 30, slingshot.y, 6, 0, Math.PI * 2);
-        ctx.arc(slingshot.x + 30, slingshot.y, 6, 0, Math.PI * 2);
-        ctx.fill();
+        drawPullHint();
+        drawLauncher();
       }
 
       // Draw Flying Arrows
